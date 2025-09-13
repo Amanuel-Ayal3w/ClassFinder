@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test
 import org.openqa.selenium.By
 import java.net.URL
 import java.nio.file.Paths
+import java.time.Duration
 
 class AvailabilityFlowTest {
     companion object {
@@ -29,10 +30,9 @@ class AvailabilityFlowTest {
                 .setNoReset(false)
                 .setFullReset(false)
                 // Increase timeouts for slower emulators
-                .setUiautomator2ServerLaunchTimeout(60000) // 60 seconds
-                .setUiautomator2ServerInstallTimeout(60000) // 60 seconds
-                .setAppWaitTimeout(30000) // 30 seconds
-                .setNewCommandTimeout(300) // 5 minutes
+                .setUiautomator2ServerLaunchTimeout(Duration.ofSeconds(60))
+                .setUiautomator2ServerInstallTimeout(Duration.ofSeconds(60))
+                .setNewCommandTimeout(Duration.ofMinutes(5))
                 .eventTimings()
 
             if (udid.isNotBlank()) {
