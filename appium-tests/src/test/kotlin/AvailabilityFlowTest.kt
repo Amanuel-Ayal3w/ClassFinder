@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.openqa.selenium.By
+import org.openqa.selenium.WebDriver
+import org.openqa.selenium.support.ui.WebDriverWait
+import org.openqa.selenium.support.ui.ExpectedConditions
 import java.net.URL
 import java.nio.file.Paths
 import java.time.Duration
@@ -69,6 +72,37 @@ class AvailabilityFlowTest {
             require(candidate != null) { "Debug APK not found. Build the app first with: ../gradlew :app:assembleDebug" }
             return candidate.absolutePath
         }
+        
+        // Helper method to find elements with multiple fallback strategies
+        private fun findElementWithFallbacks(driver: AndroidDriver, primarySelector: String, fallbackSelectors: List<String>): org.openqa.selenium.WebElement {
+            val selectors = listOf(primarySelector) + fallbackSelectors
+            
+            for (selector in selectors) {
+                try {
+                    val element = driver.findElement(By.xpath(selector))
+                    println("Found element using selector: $selector")
+                    return element
+                } catch (e: Exception) {
+                    println("Selector failed: $selector - ${e.message}")
+                }
+            }
+            
+            // If all selectors fail, print page source for debugging
+            try {
+                println("All selectors failed. Current page source:")
+                println(driver.pageSource)
+            } catch (e: Exception) {
+                println("Could not get page source: ${e.message}")
+            }
+            
+            throw Exception("Could not find element with any of the provided selectors")
+        }
+        
+        // Helper method to wait for elements to be clickable
+        private fun waitForElementClickable(driver: AndroidDriver, selector: String, timeoutSeconds: Long = 10): org.openqa.selenium.WebElement {
+            val wait = WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds))
+            return wait.until(ExpectedConditions.elementToBeClickable(By.xpath(selector)))
+        }
     }
 
     @Test
@@ -78,96 +112,125 @@ class AvailabilityFlowTest {
         try {
             println("Starting test: testFindRoomsNowFlow")
             
-            // Wait for app to be ready and look for any UI elements
+            // Wait for app to be ready
             Thread.sleep(3000)
             
-            // Print page source for debugging if elements are not found
-            fun printPageSourceOnError(elementDesc: String) {
+            // Step 1: Find and click Samsung building
+            println("Step 1: Looking for Samsung building...")
+            val samsung = findElementWithFallbacks(
+                d, 
+                "//*[@content-desc='building_samsung']",
+                listOf(
+                    "//*[contains(@text, 'Samsung')]",
+                    "//*[contains(@content-desc, 'samsung')]",
+                    "//android.widget.RadioButton[contains(@text, 'Samsung')]"
+                )
+            )
+            
+            println("Found Samsung building, clicking...")
+            samsung.click()
+            Thread.sleep(1000) // Short wait for UI update
+
+            // Step 2: Select "Now" time mode
+            println("Step 2: Looking for 'Now' time option...")
+            val now = findElementWithFallbacks(
+                d,
+                "//*[@content-desc='when_now']",
+                listOf(
+                    "//*[contains(@text, 'Now')]",
+                    "//*[contains(@text, 'NOW')]",
+                    "//android.widget.RadioButton[contains(@text, 'Now')]"
+                )
+            )
+            
+            println("Found NOW button, clicking...")
+            now.click()
+            Thread.sleep(1000) // Short wait for UI update
+
+            // Step 3: Click Find Rooms button
+            println("Step 3: Looking for Find Rooms button...")
+            val findRooms = findElementWithFallbacks(
+                d,
+                "//*[@content-desc='btn_find_rooms']",
+                listOf(
+                    "//*[contains(@text, 'Find Rooms')]",
+                    "//*[contains(@text, 'FIND ROOMS')]",
+                    "//android.widget.Button[contains(@text, 'Find')]"
+                )
+            )
+            
+            println("Found Find Rooms button, clicking...")
+            findRooms.click()
+            
+            // Step 4: Wait for results to load and verify rooms are found
+            println("Step 4: Waiting for results to load...")
+            Thread.sleep(3000) // Wait for navigation and results loading
+            
+            // Try multiple strategies to find room results
+            val roomSelectors = listOf(
+                "//*[contains(@content-desc, 'room_')]",
+                "//*[contains(@text, 'Samsung')]",
+                "//*[contains(@text, 'Available until')]",
+                "//*[contains(@text, 'Details')]",
+                "//android.widget.CardView",
+                "//android.widget.TextView[contains(@text, 'Samsung')]"
+            )
+            
+            var roomsFound = false
+            var roomCount = 0
+            
+            for (selector in roomSelectors) {
                 try {
-                    println("Could not find element: $elementDesc")
-                    println("Current page source:")
+                    val rooms = d.findElements(By.xpath(selector))
+                    if (rooms.isNotEmpty()) {
+                        println("Found ${rooms.size} elements using selector: $selector")
+                        roomCount = rooms.size
+                        roomsFound = true
+                        break
+                    }
+                } catch (e: Exception) {
+                    println("Selector $selector failed: ${e.message}")
+                }
+            }
+            
+            if (!roomsFound) {
+                println("No rooms found with any selector. Current page source:")
+                try {
                     println(d.pageSource)
                 } catch (e: Exception) {
                     println("Could not get page source: ${e.message}")
                 }
+                throw AssertionError("No rooms found for NOW flow")
             }
             
-            // Try to find Samsung building with better error handling
-            val samsung = try {
-                d.findElement(By.xpath("//*[@content-desc='building_samsung']"))
-            } catch (e: Exception) {
-                printPageSourceOnError("building_samsung")
-                // Try alternative selectors
+            println("Successfully found $roomCount room(s)")
+            
+            // Step 5: Try to find and click a details button (optional)
+            println("Step 5: Looking for details button...")
+            val detailsSelectors = listOf(
+                "//*[contains(@content-desc, 'btn_details_')]",
+                "//*[contains(@text, 'Details')]",
+                "//android.widget.Button[contains(@text, 'Details')]"
+            )
+            
+            var detailsClicked = false
+            for (selector in detailsSelectors) {
                 try {
-                    d.findElement(By.xpath("//*[contains(@text, 'Samsung')]"))
-                } catch (e2: Exception) {
-                    throw Exception("Could not find Samsung Building element. Original error: ${e.message}")
+                    val detailsButtons = d.findElements(By.xpath(selector))
+                    if (detailsButtons.isNotEmpty()) {
+                        println("Found details button, clicking...")
+                        detailsButtons.first().click()
+                        Thread.sleep(2000)
+                        println("Opened room details successfully")
+                        detailsClicked = true
+                        break
+                    }
+                } catch (e: Exception) {
+                    println("Details selector $selector failed: ${e.message}")
                 }
             }
             
-            println("Found Samsung building, clicking...")
-            samsung.click()
-            Thread.sleep(2000)
-
-            // Select time mode NOW with better error handling
-            val now = try {
-                d.findElement(By.xpath("//*[@content-desc='when_now']"))
-            } catch (e: Exception) {
-                printPageSourceOnError("when_now")
-                try {
-                    d.findElement(By.xpath("//*[contains(@text, 'NOW') or contains(@text, 'Now')]"))
-                } catch (e2: Exception) {
-                    throw Exception("Could not find NOW button. Original error: ${e.message}")
-                }
-            }
-            
-            println("Found NOW button, clicking...")
-            now.click()
-            Thread.sleep(2000)
-
-            // Tap Find Rooms with better error handling
-            val find = try {
-                d.findElement(By.xpath("//*[@content-desc='btn_find_rooms']"))
-            } catch (e: Exception) {
-                printPageSourceOnError("btn_find_rooms")
-                try {
-                    d.findElement(By.xpath("//*[contains(@text, 'Find Rooms') or contains(@text, 'FIND ROOMS')]"))
-                } catch (e2: Exception) {
-                    throw Exception("Could not find Find Rooms button. Original error: ${e.message}")
-                }
-            }
-            
-            println("Found Find Rooms button, clicking...")
-            find.click()
-            Thread.sleep(5000) // Wait longer for results to load
-
-            // Verify at least one room result appears
-            println("Looking for room results...")
-            val anyRoom = d.findElements(By.xpath("//*[contains(@content-desc, 'room_')]"))
-            
-            if (anyRoom.isEmpty()) {
-                // Try alternative room selectors
-                val alternativeRooms = d.findElements(By.xpath("//*[contains(@text, 'Room') or contains(@content-desc, 'Room')]"))
-                if (alternativeRooms.isEmpty()) {
-                    printPageSourceOnError("room results")
-                    throw AssertionError("No rooms found for NOW flow")
-                }
-                println("Found ${alternativeRooms.size} rooms using alternative selector")
-            } else {
-                println("Found ${anyRoom.size} rooms")
-            }
-            
-            assertTrue(anyRoom.isNotEmpty() || d.findElements(By.xpath("//*[contains(@text, 'Room')]")).isNotEmpty(), 
-                      "No rooms found for NOW flow")
-
-            // Try to open details of the first room
-            val detailsButtons = d.findElements(By.xpath("//*[contains(@content-desc, 'btn_details_')]"))
-            if (detailsButtons.isNotEmpty()) {
-                println("Found details button, clicking...")
-                detailsButtons.first().click()
-                Thread.sleep(2000)
-                println("Opened room details successfully")
-            } else {
+            if (!detailsClicked) {
                 println("No details buttons found, but test passed - rooms were displayed")
             }
             

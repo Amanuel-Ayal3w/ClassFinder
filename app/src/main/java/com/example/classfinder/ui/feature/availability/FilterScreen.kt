@@ -38,6 +38,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.classfinder.data.model.TimeMode
 import java.time.LocalTime
@@ -84,7 +86,8 @@ fun FilterScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { viewModel.onBuildingSelected(b.id) }
-                        .padding(vertical = 4.dp),
+                        .padding(vertical = 4.dp)
+                        .semantics { contentDescription = "building_${b.id}" },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
@@ -101,9 +104,14 @@ fun FilterScreen(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable { viewModel.onTimeModeChanged(TimeMode.NOW) }
+                modifier = Modifier
+                    .clickable { viewModel.onTimeModeChanged(TimeMode.NOW) }
+                    .semantics { contentDescription = "when_now" }
             ) {
-                RadioButton(selected = ui.timeMode == TimeMode.NOW, onClick = { viewModel.onTimeModeChanged(TimeMode.NOW) })
+                RadioButton(
+                    selected = ui.timeMode == TimeMode.NOW, 
+                    onClick = { viewModel.onTimeModeChanged(TimeMode.NOW) }
+                )
                 Text("Now", modifier = Modifier.padding(start = 8.dp))
             }
             Row(
@@ -158,7 +166,8 @@ fun FilterScreen(
         Spacer(Modifier.height(8.dp))
         Button(
             onClick = onSearch,
-            enabled = ui.selectedBuildingId != null && (ui.timeMode != TimeMode.CUSTOM || ui.customTime != null)
+            enabled = ui.selectedBuildingId != null && (ui.timeMode != TimeMode.CUSTOM || ui.customTime != null),
+            modifier = Modifier.semantics { contentDescription = "btn_find_rooms" }
         ) {
             Text("Find Rooms")
         }

@@ -33,6 +33,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -89,19 +91,37 @@ fun ResultsScreen(
                 Card(
                     modifier = Modifier
                         .padding(horizontal = 4.dp)
-                        .clickable { onOpenDetails(item.room.id) },
+                        .clickable { onOpenDetails(item.room.id) }
+                        .semantics { contentDescription = "room_${item.room.id}" },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.padding(12.dp)
                     ) {
-
+                        Text(
+                            text = item.room.name,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Available until ${item.availableUntil.format(DateTimeFormatter.ofPattern("h:mm a"))}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        
                         val now = LocalTime.now()
                         val canBook = item.availableUntil.isAfter(now.plusMinutes(30))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { onOpenDetails(item.room.id) }) { Text("Details") }
-                            Button(onClick = { bookingForRoomId = item.room.id }, enabled = canBook) { Text("Book") }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { onOpenDetails(item.room.id) },
+                                modifier = Modifier.semantics { contentDescription = "btn_details_${item.room.id}" }
+                            ) { Text("Details") }
+                            Button(
+                                onClick = { bookingForRoomId = item.room.id }, 
+                                enabled = canBook,
+                                modifier = Modifier.semantics { contentDescription = "btn_book_${item.room.id}" }
+                            ) { Text("Book") }
                         }
                     }
                 }
