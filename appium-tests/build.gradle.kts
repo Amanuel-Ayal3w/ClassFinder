@@ -7,6 +7,12 @@ java {
     targetCompatibility = JavaVersion.VERSION_11
 }
 
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+}
+
 dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.24")
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
