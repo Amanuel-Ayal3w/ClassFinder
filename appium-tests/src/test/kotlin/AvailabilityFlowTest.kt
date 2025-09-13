@@ -40,12 +40,12 @@ class AvailabilityFlowTest {
         }
 
         private fun findApk(): String {
-            // Try debug APK under app/build/outputs/apk/debug/
-            val candidate = Paths.get("app", "build", "outputs", "apk", "debug")
+            // Try debug APK under ../app/build/outputs/apk/debug/ (from appium-tests directory)
+            val candidate = Paths.get("..", "app", "build", "outputs", "apk", "debug")
                 .toFile()
                 .walkTopDown()
                 .firstOrNull { it.isFile && it.name.endsWith(".apk") }
-            require(candidate != null) { "Debug APK not found. Build the app first (assembleDebug)." }
+            require(candidate != null) { "Debug APK not found. Build the app first with: ../gradlew :app:assembleDebug" }
             return candidate.absolutePath
         }
     }
