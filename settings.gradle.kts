@@ -21,4 +21,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "classFInder"
 include(":app")
-include(":appium-tests")
